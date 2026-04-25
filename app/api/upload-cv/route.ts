@@ -91,10 +91,12 @@ export async function POST(req: NextRequest) {
   try {
     parsed = await parseCv(extractedText);
   } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    console.error("[upload-cv] DeepSeek parseCv failed:", detail, err);
     return NextResponse.json(
       {
-        error: "Erreur lors de l'analyse IA. Réessaie dans un instant.",
-        detail: err instanceof Error ? err.message : String(err),
+        error: `Erreur lors de l'analyse IA : ${detail}`,
+        detail,
       },
       { status: 502 }
     );
