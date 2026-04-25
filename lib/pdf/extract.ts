@@ -1,8 +1,8 @@
-// Import direct du sous-module pour éviter le code de debug d'index.js
-// qui tente de lire un PDF de test au load (incompatible Next.js bundling).
-import pdf from "pdf-parse/lib/pdf-parse.js";
+import { extractText, getDocumentProxy } from "unpdf";
 
 export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
-  const data = await pdf(buffer);
-  return data.text.trim();
+  const uint8 = new Uint8Array(buffer);
+  const pdf = await getDocumentProxy(uint8);
+  const { text } = await extractText(pdf, { mergePages: true });
+  return text.trim();
 }

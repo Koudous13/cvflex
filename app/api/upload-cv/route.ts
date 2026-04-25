@@ -76,6 +76,7 @@ export async function POST(req: NextRequest) {
       {
         error:
           "Le texte extrait est trop court. Le PDF est-il bien lisible (pas une image scannée) ?",
+        extractedLength: extractedText?.length ?? 0,
       },
       { status: 422 }
     );
