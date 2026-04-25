@@ -1,8 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { renderToStaticMarkup } from "react-dom/server";
 import { createClient } from "@/lib/supabase/server";
 import { CvProfileSchema, type TemplateId } from "@/lib/types";
-import { CvTemplate } from "@/components/templates";
+import { renderCvDocument } from "@/components/templates";
 import { generatePdfFromHtml } from "@/lib/pdf/generate";
 
 export const runtime = "nodejs";
@@ -33,12 +32,7 @@ export async function GET(
 
   const profile = CvProfileSchema.parse(cv.generated_json);
   const templateId = cv.template_id as TemplateId;
-
-  const body = renderToStaticMarkup(
-    <CvTemplate profile={profile} templateId={templateId} />
-  );
-
-  const html = `<!doctype html><html lang="fr"><head><meta charset="utf-8"/></head><body>${body}</body></html>`;
+  const html = renderCvDocument(profile, templateId);
 
   let pdf: Buffer;
   try {

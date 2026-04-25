@@ -1,29 +1,35 @@
-import type { CvProfile } from "@/lib/types";
+import type { CvProfile, TemplateId } from "@/lib/types";
 import { THEMES, type CvTheme } from "./themes";
-import type { TemplateId } from "@/lib/types";
 
-type Props = {
-  profile: CvProfile;
-  templateId: TemplateId;
-};
-
-export function CvTemplate({ profile, templateId }: Props) {
-  const theme = THEMES[templateId];
-  const sidebarItems = renderSidebar(profile);
-  const mainItems = renderMain(profile, theme);
-
-  return (
-    <>
-      <style dangerouslySetInnerHTML={{ __html: buildCss(theme) }} />
-      <div className="cv">
-        <aside className="sidebar">{sidebarItems}</aside>
-        <main className="main">{mainItems}</main>
-      </div>
-    </>
-  );
+function escape(s: string | null | undefined): string {
+  if (!s) return "";
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
-function renderSidebar(profile: CvProfile) {
+function escapeAttr(s: string): string {
+  return escape(s);
+}
+
+export function renderCvHtml(profile: CvProfile, templateId: TemplateId): string {
+  const theme = THEMES[templateId];
+  const css = buildCss(theme);
+  const sidebar = renderSidebar(profile, theme);
+  const main = renderMain(profile, theme);
+
+  return `<style>${css}</style><div class="cv"><aside class="sidebar">${sidebar}</aside><main class="main">${main}</main></div>`;
+}
+
+export function renderCvDocument(profile: CvProfile, templateId: TemplateId): string {
+  const inner = renderCvHtml(profile, templateId);
+  return `<!doctype html><html lang="fr"><head><meta charset="utf-8"/><title>${escape(profile.fullName)} — CV</title></head><body>${inner}</body></html>`;
+}
+
+function renderSidebar(profile: CvProfile, theme: CvTheme): string {
   const initials = profile.fullName
     .split(/\s+/)
     .map((s) => s[0])
@@ -32,180 +38,136 @@ function renderSidebar(profile: CvProfile) {
     .join("")
     .toUpperCase();
 
-  return (
-    <>
-      <div className="photo-wrapper">
-        <div className="profile-avatar">{initials}</div>
-      </div>
-      <h1>{profile.fullName}</h1>
-      {profile.headline && <div className="role">{profile.headline}</div>}
+  const parts: string[] = [];
 
-      <h2>Contact</h2>
-      <ul className="contact-list">
-        {profile.contact.location && (
-          <li>
-            <span className="icon">📍</span>
-            {profile.contact.location}
-          </li>
-        )}
-        {profile.contact.phone && (
-          <li>
-            <span className="icon">📞</span>
-            {profile.contact.phone}
-          </li>
-        )}
-        {profile.contact.email && (
-          <li>
-            <span className="icon">✉</span>
-            {profile.contact.email}
-          </li>
-        )}
-        {(profile.contact.links ?? []).map((link, i) => (
-          <li key={i}>
-            <span className="icon">🌐</span>
-            <a href={link.url}>{link.label || link.url}</a>
-          </li>
-        ))}
-      </ul>
+  parts.push(`<div class="photo-wrapper"><div class="profile-avatar">${escape(initials)}</div></div>`);
+  parts.push(`<h1>${escape(profile.fullName)}</h1>`);
+  if (profile.headline) {
+    parts.push(`<div class="role">${escape(profile.headline)}</div>`);
+  }
 
-      {profile.skills.technical.length > 0 && (
-        <>
-          <h2>Stack</h2>
-          <div className="skill-tags">
-            {profile.skills.technical.map((s, i) => (
-              <span key={i} className="tag">
-                {s}
-              </span>
-            ))}
-          </div>
-        </>
-      )}
+  const contactItems: string[] = [];
+  if (profile.contact.location) {
+    contactItems.push(`<li><span class="icon">📍</span>${escape(profile.contact.location)}</li>`);
+  }
+  if (profile.contact.phone) {
+    contactItems.push(`<li><span class="icon">📞</span>${escape(profile.contact.phone)}</li>`);
+  }
+  if (profile.contact.email) {
+    contactItems.push(`<li><span class="icon">✉</span>${escape(profile.contact.email)}</li>`);
+  }
+  for (const link of profile.contact.links ?? []) {
+    contactItems.push(
+      `<li><span class="icon">🌐</span><a href="${escapeAttr(link.url)}">${escape(link.label || link.url)}</a></li>`
+    );
+  }
+  if (contactItems.length) {
+    parts.push(`<h2>Contact</h2><ul class="contact-list">${contactItems.join("")}</ul>`);
+  }
 
-      {profile.skills.soft.length > 0 && (
-        <>
-          <h2>Soft Skills</h2>
-          <ul className="soft-list">
-            {profile.skills.soft.map((s, i) => (
-              <li key={i}>{s}</li>
-            ))}
-          </ul>
-        </>
-      )}
+  if (profile.skills.technical.length > 0) {
+    const tags = profile.skills.technical
+      .map((s) => `<span class="tag">${escape(s)}</span>`)
+      .join("");
+    parts.push(`<h2>Stack</h2><div class="skill-tags">${tags}</div>`);
+  }
 
-      {profile.certifications.length > 0 && (
-        <>
-          <h2>Certifications</h2>
-          <ul className="cert-list">
-            {profile.certifications.map((s, i) => (
-              <li key={i}>
-                <span className="check">✓</span> {s}
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
+  if (profile.skills.soft.length > 0) {
+    const items = profile.skills.soft.map((s) => `<li>${escape(s)}</li>`).join("");
+    parts.push(`<h2>Soft Skills</h2><ul class="soft-list">${items}</ul>`);
+  }
 
-      {profile.skills.languages.length > 0 && (
-        <>
-          <h2>Langues</h2>
-          <ul className="soft-list">
-            {profile.skills.languages.map((s, i) => (
-              <li key={i}>{s}</li>
-            ))}
-          </ul>
-        </>
-      )}
-    </>
-  );
+  if (profile.certifications.length > 0) {
+    const items = profile.certifications
+      .map((s) => `<li><span class="check">✓</span> ${escape(s)}</li>`)
+      .join("");
+    parts.push(`<h2>Certifications</h2><ul class="cert-list">${items}</ul>`);
+  }
+
+  if (profile.skills.languages.length > 0) {
+    const items = profile.skills.languages
+      .map((s) => `<li>${escape(s)}</li>`)
+      .join("");
+    parts.push(`<h2>Langues</h2><ul class="soft-list">${items}</ul>`);
+  }
+
+  void theme;
+  return parts.join("");
 }
 
-function renderMain(profile: CvProfile, theme: CvTheme) {
-  return (
-    <>
-      <div className="badge">⚡ {theme.badge}</div>
+function renderMain(profile: CvProfile, theme: CvTheme): string {
+  const parts: string[] = [];
 
-      {profile.summary && (
-        <>
-          <h2>Profil</h2>
-          <p className="profile-text">{profile.summary}</p>
-        </>
-      )}
+  parts.push(`<div class="badge">⚡ ${escape(theme.badge)}</div>`);
 
-      {profile.experiences.length > 0 && (
-        <>
-          <h2>Expériences</h2>
-          {profile.experiences.map((exp, i) => (
-            <div key={i} className="exp">
-              <div className="exp-header">
-                <span>
-                  <span className="exp-title">{exp.title}</span>
-                  {exp.company && (
-                    <>
-                      {" · "}
-                      <span className="exp-company">{exp.company}</span>
-                    </>
-                  )}
-                </span>
-                <span className="exp-date">{exp.period}</span>
-              </div>
-              {exp.location && <div className="exp-location">{exp.location}</div>}
-              {exp.achievements.length > 0 && (
-                <ul className="achievements">
-                  {exp.achievements.map((a, j) => (
-                    <li key={j}>{a}</li>
-                  ))}
-                </ul>
-              )}
-              {exp.stack && exp.stack.length > 0 && (
-                <div className="stack">
-                  {exp.stack.map((s, j) => (
-                    <span key={j}>{s}</span>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-        </>
-      )}
+  if (profile.summary) {
+    parts.push(`<h2>Profil</h2><p class="profile-text">${escape(profile.summary)}</p>`);
+  }
 
-      {profile.projects.length > 0 && (
-        <>
-          <h2>Projets</h2>
-          {profile.projects.map((p, i) => (
-            <div key={i} className="project">
-              <div className="project-header">
-                <span className="project-title">{p.name}</span>
-              </div>
-              <div className="project-desc">{p.description}</div>
-              {p.stack && p.stack.length > 0 && (
-                <div className="stack">
-                  {p.stack.map((s, j) => (
-                    <span key={j}>{s}</span>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-        </>
-      )}
+  if (profile.experiences.length > 0) {
+    parts.push(`<h2>Expériences</h2>`);
+    for (const exp of profile.experiences) {
+      const company = exp.company
+        ? ` · <span class="exp-company">${escape(exp.company)}</span>`
+        : "";
+      const location = exp.location
+        ? `<div class="exp-location">${escape(exp.location)}</div>`
+        : "";
+      const achievements =
+        exp.achievements.length > 0
+          ? `<ul class="achievements">${exp.achievements
+              .map((a) => `<li>${escape(a)}</li>`)
+              .join("")}</ul>`
+          : "";
+      const stack =
+        exp.stack && exp.stack.length > 0
+          ? `<div class="stack">${exp.stack
+              .map((s) => `<span>${escape(s)}</span>`)
+              .join("")}</div>`
+          : "";
+      parts.push(
+        `<div class="exp"><div class="exp-header"><span><span class="exp-title">${escape(
+          exp.title
+        )}</span>${company}</span><span class="exp-date">${escape(
+          exp.period
+        )}</span></div>${location}${achievements}${stack}</div>`
+      );
+    }
+  }
 
-      {profile.education.length > 0 && (
-        <>
-          <h2>Formation</h2>
-          {profile.education.map((e, i) => (
-            <div key={i} className="formation-item">
-              <div className="title">{e.degree}</div>
-              <div className="school">
-                {e.school}
-                {e.period ? ` — ${e.period}` : ""}
-              </div>
-              {e.details && <div className="details">{e.details}</div>}
-            </div>
-          ))}
-        </>
-      )}
-    </>
-  );
+  if (profile.projects.length > 0) {
+    parts.push(`<h2>Projets</h2>`);
+    for (const p of profile.projects) {
+      const stack =
+        p.stack && p.stack.length > 0
+          ? `<div class="stack">${p.stack
+              .map((s) => `<span>${escape(s)}</span>`)
+              .join("")}</div>`
+          : "";
+      parts.push(
+        `<div class="project"><div class="project-header"><span class="project-title">${escape(
+          p.name
+        )}</span></div><div class="project-desc">${escape(p.description)}</div>${stack}</div>`
+      );
+    }
+  }
+
+  if (profile.education.length > 0) {
+    parts.push(`<h2>Formation</h2>`);
+    for (const e of profile.education) {
+      const period = e.period ? ` — ${escape(e.period)}` : "";
+      const details = e.details
+        ? `<div class="details">${escape(e.details)}</div>`
+        : "";
+      parts.push(
+        `<div class="formation-item"><div class="title">${escape(
+          e.degree
+        )}</div><div class="school">${escape(e.school)}${period}</div>${details}</div>`
+      );
+    }
+  }
+
+  return parts.join("");
 }
 
 function buildCss(theme: CvTheme): string {
@@ -331,9 +293,7 @@ function buildCss(theme: CvTheme): string {
       font-weight: 500; font-style: italic;
     }
     .exp-location { font-size: 10.5px; color: ${c.textMuted}; margin-bottom: 3px; }
-    .achievements {
-      list-style: none; margin-top: 4px;
-    }
+    .achievements { list-style: none; margin-top: 4px; }
     .achievements li {
       font-size: 11.5px; color: ${c.text}; line-height: 1.55;
       padding: 1px 0 1px 12px; position: relative;

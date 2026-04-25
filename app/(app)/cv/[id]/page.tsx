@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { CvProfileSchema, type TemplateId } from "@/lib/types";
-import { CvTemplate } from "@/components/templates";
+import { renderCvHtml } from "@/components/templates";
 import { buttonVariants } from "@/components/ui/button";
 
 export default async function CvViewPage({
@@ -19,7 +19,7 @@ export default async function CvViewPage({
 
   const { data: cv } = await supabase
     .from("generated_cvs")
-    .select("id, template_id, generated_json, created_at, job_offer_text")
+    .select("id, template_id, generated_json, created_at")
     .eq("id", id)
     .eq("user_id", user.id)
     .maybeSingle();
@@ -28,6 +28,7 @@ export default async function CvViewPage({
 
   const profile = CvProfileSchema.parse(cv.generated_json);
   const templateId = cv.template_id as TemplateId;
+  const cvHtml = renderCvHtml(profile, templateId);
 
   return (
     <div className="bg-muted/30 min-h-screen">
@@ -56,9 +57,10 @@ export default async function CvViewPage({
       </div>
 
       <div className="max-w-5xl mx-auto px-6 pb-12">
-        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-          <CvTemplate profile={profile} templateId={templateId} />
-        </div>
+        <div
+          className="bg-white rounded-lg shadow-sm overflow-hidden"
+          dangerouslySetInnerHTML={{ __html: cvHtml }}
+        />
       </div>
     </div>
   );
