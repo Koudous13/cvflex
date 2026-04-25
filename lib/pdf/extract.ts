@@ -1,8 +1,11 @@
-import { extractText, getDocumentProxy } from "unpdf";
+import { extractText } from "unpdf";
 
 export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
-  const uint8 = new Uint8Array(buffer);
-  const pdf = await getDocumentProxy(uint8);
-  const { text } = await extractText(pdf, { mergePages: true });
+  const { text, totalPages } = await extractText(new Uint8Array(buffer), {
+    mergePages: true,
+  });
+  console.log(
+    `[pdf] extracted ${text.length} chars from ${totalPages} pages`
+  );
   return text.trim();
 }

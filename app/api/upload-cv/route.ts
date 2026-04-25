@@ -39,6 +39,7 @@ export async function POST(req: NextRequest) {
 
   const arrayBuffer = await file.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
+  console.log(`[upload-cv] file=${file.name} size=${buffer.length}`);
 
   // 1. Storage upload
   const path = `${user.id}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
@@ -71,11 +72,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  console.log(
+    `[upload-cv] extractedText length=${extractedText?.length ?? 0}, preview=${JSON.stringify((extractedText ?? "").slice(0, 200))}`
+  );
+
   if (!extractedText || extractedText.length < 50) {
     return NextResponse.json(
       {
-        error:
-          "Le texte extrait est trop court. Le PDF est-il bien lisible (pas une image scannée) ?",
+        error: `Le texte extrait est trop court (${extractedText?.length ?? 0} caractères). Le PDF est-il bien lisible (pas une image scannée) ?`,
         extractedLength: extractedText?.length ?? 0,
       },
       { status: 422 }
