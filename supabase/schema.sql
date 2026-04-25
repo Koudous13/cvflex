@@ -98,10 +98,31 @@ create policy "generated_cvs_delete_own" on public.generated_cvs
 -- À créer manuellement dans Supabase Dashboard → Storage :
 --   - bucket "base-cvs"        (private)
 --   - bucket "generated-pdfs"  (private)
--- Puis ajouter les policies suivantes via SQL :
+-- Puis exécuter le bloc suivant (idempotent) :
 
--- (Décommente après avoir créé les buckets)
--- create policy "base_cvs_storage_own" on storage.objects
---   for all using (bucket_id = 'base-cvs' and auth.uid()::text = (storage.foldername(name))[1]);
--- create policy "generated_pdfs_storage_own" on storage.objects
---   for all using (bucket_id = 'generated-pdfs' and auth.uid()::text = (storage.foldername(name))[1]);
+drop policy if exists "base_cvs_storage_own" on storage.objects;
+drop policy if exists "generated_pdfs_storage_own" on storage.objects;
+
+create policy "base_cvs_storage_own"
+  on storage.objects for all
+  to authenticated
+  using (
+    bucket_id = 'base-cvs'
+    and auth.uid()::text = (storage.foldername(name))[1]
+  )
+  with check (
+    bucket_id = 'base-cvs'
+    and auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+create policy "generated_pdfs_storage_own"
+  on storage.objects for all
+  to authenticated
+  using (
+    bucket_id = 'generated-pdfs'
+    and auth.uid()::text = (storage.foldername(name))[1]
+  )
+  with check (
+    bucket_id = 'generated-pdfs'
+    and auth.uid()::text = (storage.foldername(name))[1]
+  );
